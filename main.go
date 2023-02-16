@@ -13,13 +13,11 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-const (
-	stateTopic      string = "valetudo/maploader/status"
-	currentMapTopic string = "valetudo/maploader/map"
-	saveTopic       string = currentMapTopic + "/save"
-	loadTopic       string = currentMapTopic + "/load"
-	setTopic        string = currentMapTopic + "/set"
-)
+var stateTopic string      // mqtt-prefix/mqtt-identifier/maploader/status  (e.g., /valetudo/myrobot/maploader/status)
+var currentMapTopic string // mqtt-prefix/mqtt-identifier/maploader/map  (e.g., /valetudo/myrobot/maploader/map)
+var saveTopic string       // currentMapTopic + "/save"
+var loadTopic string       // currentMapTopic + "/load"
+var setTopic string        // currentMapTopic + "/set"
 
 var maploaderDir string
 var currentMap string
@@ -83,11 +81,13 @@ func main() {
 
 	robot.DetectRobot()
 
+	initTopics()
+
 	var broker = config.MqttHost()
 	var port = config.MqttPort()
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", broker, port))
-	opts.SetClientID("maploader")
+	opts.SetClientID("maploader_" + config.MqttIdentifier())
 	opts.SetUsername(config.MqttUsername())
 	opts.SetPassword(config.MqttPassword())
 	opts.OnConnect = connectHandler
@@ -187,4 +187,27 @@ func checkAndHandleErrorWithMqtt(err error, client mqtt.Client) {
 		util.CheckAndHandleError(err)
 		publishState(client, "error")
 	}
+}
+
+func initTopics() {
+	var prefix string
+
+	prefix = config.MqttPrefix()
+
+	if prefix == "" {
+		prefix = "valetudo"
+	}
+	prefix = prefix + "/" + config.MqttIdentifier() + "/maploader"
+
+	stateTopic = prefix + "/status"
+	currentMapTopic = prefix + "/map"
+	saveTopic = currentMapTopic + "/save"
+	loadTopic = currentMapTopic + "/load"
+	setTopic = currentMapTopic + "/set"
+
+	log.Printf("stateTopic: %s", stateTopic)
+	log.Printf("currentMapTopic: %s", currentMapTopic)
+	log.Printf("saveTopic: %s", saveTopic)
+	log.Printf("loadTopic: %s", loadTopic)
+	log.Printf("setTopic: %s", setTopic)
 }
